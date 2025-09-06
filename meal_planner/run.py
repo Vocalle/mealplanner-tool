@@ -213,4 +213,4 @@ def show_meal_detail(meal_id):
 if st.session_state.view == "plan":
     st.title(T["plan_title"])
     st.markdown(f"## {T['plan_subtitle']}")
-    cols = st.columns(7
+    cols = st.columns(7)
