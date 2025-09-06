@@ -299,15 +299,16 @@ elif st.session_state.view == "manage":
                     f"<div class='meal-card' style='background:{color}'>",
                     unsafe_allow_html=True
                 )
-              st.markdown(
-                f"**{meal['name']} ({CATEGORY_LABELS.get(meal['category'], {'DE': meal['category'], 'EN': meal['category']})[lang]})**",
-                unsafe_allow_html=True
-        )
-                if st.button(UI["details"][lang], key=f"detail_manage_{meal['id']}"):
-                    show_meal_detail(meal['id'])
-                if st.button(UI["delete"][lang], key=f"del_manage_{meal['id']}"):
-                    delete_and_refresh(meal['id'])
-                st.markdown("</div>", unsafe_allow_html=True)
+             st.markdown(
+    f"**{meal['name']} ({CATEGORY_LABELS.get(meal['category'], {'DE': meal['category'], 'EN': meal['category']})[lang]})**",
+    unsafe_allow_html=True
+)
+if st.button(UI["details"][lang], key=f"detail_manage_{meal['id']}"):
+    show_meal_detail(meal['id'])
+if st.button(UI["delete"][lang], key=f"del_manage_{meal['id']}"):
+    delete_and_refresh(meal['id'])
+st.markdown("</div>", unsafe_allow_html=True)
+
 
 # Detailansicht
 if st.session_state.detail:
