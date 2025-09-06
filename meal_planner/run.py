@@ -344,7 +344,7 @@ if st.session_state.detail:
     meal, ings = get_meal(st.session_state.detail)
     if meal:
         st.markdown("---")
-        # Dynamische Farbe basierend auf aktueller Kategorie
+        # Farbe dynamisch basierend auf DB-Wert
         color = CATEGORY_COLORS.get(meal["category"], "#333")
         st.markdown(f"<div class='meal-card' style='background:{color}'>", unsafe_allow_html=True)
 
@@ -374,6 +374,7 @@ if st.session_state.detail:
                 )
                 submitted = st.form_submit_button("💾 " + ("Speichern" if lang=="DE" else "Save"))
                 if submitted:
+                    # Update in DB
                     with get_db() as conn:
                         conn.execute(
                             "UPDATE meal SET name=?, category=? WHERE id=?",
@@ -381,17 +382,14 @@ if st.session_state.detail:
                         )
                         conn.commit()
 
-                    # Meal in der Session aktualisieren, Farbe sofort übernehmen
-                    meal["name"] = new_name
-                    meal["category"] = new_category
+                    # Formular schließen
+                    st.session_state[f"edit_meal_{meal['id']}"] = False
 
-                    # Optional: Wochenplan ebenfalls aktualisieren, damit Card-Farbe sofort sichtbar wird
+                    # Wochenplan ggf. aktualisieren, damit Farbe sofort passt
                     for tag, m_id in st.session_state.plan.items():
                         if m_id == meal['id']:
-                            st.session_state.plan[tag] = meal['id']
+                            st.session_state.plan[tag] = m_id
 
-                    st.success("✔️ " + ("Gericht aktualisiert!" if lang=="DE" else "Meal updated!"))
-                    st.session_state[f"edit_meal_{meal['id']}"] = False
                     st.rerun()
 
         # Zutaten
