@@ -144,7 +144,7 @@ def delete_ingredient(ing_id):
         conn.execute("DELETE FROM ingredient WHERE id=?", (ing_id,))
         conn.commit()
 
-# Session State initialisieren
+# 1️⃣ Session State initialisieren
 for key, default in [
     ("view", "plan"),
     ("plan", None),   # nur ein Plan für beide Sprachen
@@ -154,7 +154,7 @@ for key, default in [
     if key not in st.session_state:
         st.session_state[key] = default
 
-# Sidebar: Sprache
+# 2️⃣ Sidebar: Sprache auswählen
 lang = st.sidebar.radio(
     UI["lang_radio"][st.session_state.lang],
     options=["DE", "EN"],
@@ -162,12 +162,12 @@ lang = st.sidebar.radio(
     key="lang"
 )
 
-# Woche initial befüllen (sprachabhängig)
-if lang not in st.session_state.plan or not st.session_state.plan[lang]:
+# 3️⃣ Woche initialisieren (nur einmal, für beide Sprachen)
+if st.session_state.plan is None:
     meals = get_meals()
-    st.session_state.plan[lang] = {
+    st.session_state.plan = {
         tag: (meals and random.choice(meals)["id"]) or None
-        for tag in DAYS[lang]
+        for tag in DAYS["DE"]  # interne Schlüssel immer DE
     }
 
 # Dünneres CSS-Upgrade
