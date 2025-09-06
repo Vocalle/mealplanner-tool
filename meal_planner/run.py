@@ -344,13 +344,12 @@ if st.session_state.detail:
     meal, ings = get_meal(st.session_state.detail)
     if meal:
         st.markdown("---")
+        # Dynamische Farbe basierend auf aktueller Kategorie
         color = CATEGORY_COLORS.get(meal["category"], "#333")
-        st.markdown(
-            f"<div class='meal-card' style='background:{color}'>",
-            unsafe_allow_html=True
-        )
+        st.markdown(f"<div class='meal-card' style='background:{color}'>", unsafe_allow_html=True)
+
         # Name + Kategorie + Stift zum Bearbeiten
-        col_name, col_edit = st.columns([4, 1])
+        col_name, col_edit = st.columns([4,1])
         col_name.markdown(
             f"### {meal['name']} ({CATEGORY_LABELS.get(meal['category'], {'DE': meal['category'], 'EN': meal['category']})[lang]})",
             unsafe_allow_html=True
@@ -381,11 +380,21 @@ if st.session_state.detail:
                             (new_name, new_category, meal['id'])
                         )
                         conn.commit()
+
+                    # Meal in der Session aktualisieren, Farbe sofort übernehmen
+                    meal["name"] = new_name
+                    meal["category"] = new_category
+
+                    # Optional: Wochenplan ebenfalls aktualisieren, damit Card-Farbe sofort sichtbar wird
+                    for tag, m_id in st.session_state.plan.items():
+                        if m_id == meal['id']:
+                            st.session_state.plan[tag] = meal['id']
+
                     st.success("✔️ " + ("Gericht aktualisiert!" if lang=="DE" else "Meal updated!"))
                     st.session_state[f"edit_meal_{meal['id']}"] = False
                     st.rerun()
 
-        # 2️⃣ Zutaten
+        # Zutaten
         st.markdown(f"#### {'Zutaten' if lang=='DE' else 'Ingredients'}")
         for ing in ings:
             col1, col2 = st.columns([4,1])
@@ -406,7 +415,7 @@ if st.session_state.detail:
                 add_ingredient(meal['id'], new_ing.strip())
                 st.rerun()
 
-        # 3️⃣ Rezept
+        # Rezept
         st.markdown(f"#### {'Rezept' if lang=='DE' else 'Recipe'}")
         recipe = st.text_area(
             ("Rezept bearbeiten" if lang=="DE" else "Edit recipe"),
@@ -420,7 +429,7 @@ if st.session_state.detail:
             update_recipe(meal['id'], recipe)
             st.success("✔️ " + ("Rezept gespeichert!" if lang=="DE" else "Recipe saved!"))
 
-        # 4️⃣ Löschen / Zurück
+        # Löschen / Zurück
         c1, c2 = st.columns(2)
         with c1:
             if st.button(UI["delete"][lang], key=f"del_meal_{meal['id']}"):
