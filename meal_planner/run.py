@@ -175,7 +175,7 @@ if st.session_state.view == "plan":
         st.rerun()
 
     st.divider()
-    st.markdown("**Tipp:** Neue Gerichte kannst du im Menü 'Mahlzeiten verwalten' anlegen."" if st.session_state.lang == "DE" else "**Tip:** You can add new meals in the 'Manage Meals' menu.")
+    st.markdown("**Tipp:** Neue Gerichte kannst du im Menü 'Mahlzeiten verwalten' anlegen." if st.session_state.lang == "DE" else "**Tip:** You can add new meals in the 'Manage Meals' menu.")
 
 # Mahlzeiten verwalten
 elif st.session_state.view == "manage":
