@@ -4,6 +4,7 @@ import os
 import random
 
 DB_PATH = "/data/meals.db" if os.path.exists("/data") else "meals.db"
+STATE_FILE = "user_state.json"  # JSON-Datei, die Sprache und Wochenplan speichert
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -144,15 +145,35 @@ def delete_ingredient(ing_id):
         conn.execute("DELETE FROM ingredient WHERE id=?", (ing_id,))
         conn.commit()
 
+import json
+import os
+
+def save_user_state(plan, lang):
+    state = {
+        "plan": plan,
+        "lang": lang
+    }
+    with open(STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(state, f)
+
+def load_user_state():
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            state = json.load(f)
+            return state.get("plan"), state.get("lang", "DE")
+    return None, "DE"
+
 # 1️⃣ Session State initialisieren
-for key, default in [
-    ("view", "plan"),
-    ("plan", None),   # nur ein Plan für beide Sprachen
-    ("detail", None),
-    ("lang", "DE")
-]:
-    if key not in st.session_state:
-        st.session_state[key] = default
+if "view" not in st.session_state:
+    st.session_state.view = "plan"
+if "detail" not in st.session_state:
+    st.session_state.detail = None
+
+# Plan + Sprache persistent laden
+if "plan" not in st.session_state or "lang" not in st.session_state:
+    plan, lang = load_user_state()
+    st.session_state.plan = plan or None
+    st.session_state.lang = lang or "DE"
 
 # 2️⃣ Sidebar: Sprache auswählen
 lang = st.sidebar.radio(
@@ -161,6 +182,8 @@ lang = st.sidebar.radio(
     index=0 if st.session_state.lang == "DE" else 1,
     key="lang"
 )
+st.session_state.lang = lang
+save_user_state(st.session_state.plan, st.session_state.lang)
 
 # 3️⃣ Woche initialisieren (nur einmal, für beide Sprachen)
 if st.session_state.plan is None:
@@ -212,6 +235,7 @@ def reroll_day(day):
     options = [m for m in meals if m["id"] != current]
     if options:
         st.session_state.plan[day] = random.choice(options)["id"]
+    save_user_state(st.session_state.plan, st.session_state.lang)  # ← neu
     st.rerun()
 
 def delete_and_refresh(meal_id):
@@ -255,6 +279,7 @@ if st.session_state.view == "plan":
             tag: (meals and random.choice(meals)["id"]) or None
             for tag in DAYS["DE"]
         }
+        save_user_state(st.session_state.plan, st.session_state.lang)
         st.rerun()
 
     st.divider()
