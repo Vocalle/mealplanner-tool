@@ -243,4 +243,3 @@ if st.session_state.detail:
         if st.button("Zurück zum Plan" if st.session_state.lang == "DE" else "Back to plan"):
             st.session_state.detail = None
             st.rerun()
-```
