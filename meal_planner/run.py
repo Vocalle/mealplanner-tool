@@ -160,12 +160,12 @@ lang = st.sidebar.radio(
     key="lang"
 )
 
-# Woche initial befüllen
+# Woche initial befüllen (sprachabhängig)
 if st.session_state.plan is None:
     meals = get_meals()
     st.session_state.plan = {
         tag: (meals and random.choice(meals)["id"]) or None
-        for tag in DAYS_DE
+        for tag in DAYS[lang]
     }
 
 # Dünneres CSS-Upgrade
@@ -225,7 +225,7 @@ if st.session_state.view == "plan":
     st.title(UI["plan_title"][lang])
     st.markdown(UI["plan_header"][lang])
     cols = st.columns(7)
-    for i, tag in enumerate(DAYS_DE):
+      for i, tag in enumerate(DAYS[lang]):
         meal_id = st.session_state.plan.get(tag)
         meal, _ = get_meal(meal_id)
         with cols[i]:
@@ -252,13 +252,13 @@ if st.session_state.view == "plan":
                     unsafe_allow_html=True
                 )
 
-    if st.button(UI["reroll_week"][lang]):
-        meals = get_meals()
-        st.session_state.plan = {
-            tag: (meals and random.choice(meals)["id"]) or None
-            for tag in DAYS_DE
-        }
-        st.rerun()
+if st.button(UI["reroll_week"][lang]):
+    meals = get_meals()
+    st.session_state.plan = {
+        tag: (meals and random.choice(meals)["id"]) or None
+        for tag in DAYS[lang]   # <-- Sprachabhängig
+    }
+    st.rerun()
 
     st.divider()
     st.markdown(UI["tip"][lang])
