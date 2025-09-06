@@ -182,7 +182,6 @@ lang = st.sidebar.radio(
     index=0 if st.session_state.lang == "DE" else 1,
     key="lang"
 )
-st.session_state.lang = lang
 save_user_state(st.session_state.plan, st.session_state.lang)
 
 # 3️⃣ Woche initialisieren (nur einmal, für beide Sprachen)
