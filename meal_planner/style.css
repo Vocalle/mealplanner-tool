@@ -1,0 +1,24 @@
+body {
+  background-image: url('https://deinlink.zum/bild.jpg');
+  background-size: cover;
+  background-position: center;
+}
+.block {
+  background: rgba(0,0,0,0.6);
+  border-radius: 8px;
+  margin: 16px 0;
+  padding: 24px;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.button {
+  background: #222;
+  color: #fff;
+  border-radius: 4px;
+  padding: 8px 16px;
+  border: none;
+  margin: 4px;
+}
+.button.red {
+  background: #d33;
+}
