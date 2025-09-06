@@ -349,36 +349,41 @@ if st.session_state.detail:
             f"<div class='meal-card' style='background:{color}'>",
             unsafe_allow_html=True
         )
-        st.markdown(
+        # Name + Kategorie + Stift zum Bearbeiten
+        col_name, col_edit = st.columns([4, 1])
+        col_name.markdown(
             f"### {meal['name']} ({CATEGORY_LABELS.get(meal['category'], {'DE': meal['category'], 'EN': meal['category']})[lang]})",
             unsafe_allow_html=True
         )
+        if col_edit.button("✏️", key=f"edit_btn_{meal['id']}"):
+            st.session_state[f"edit_meal_{meal['id']}"] = True
+
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 1️⃣ Name & Kategorie bearbeiten
-        st.markdown(f"#### {'Gericht bearbeiten' if lang=='DE' else 'Edit Meal'}")
-        with st.form(f"edit_meal_form_{meal['id']}"):
-            new_name = st.text_input(
-                ("Gericht" if lang=="DE" else "Meal name"),
-                value=meal["name"]
-            )
-            new_category = st.selectbox(
-                ("Kategorie" if lang=="DE" else "Category"),
-                options=CATEGORIES,
-                index=CATEGORIES.index(meal["category"]),
-                format_func=lambda c: CATEGORY_LABELS.get(c, {"DE": c, "EN": c})[lang]
-            )
-            submitted = st.form_submit_button("💾 " + ("Speichern" if lang=="DE" else "Save"))
-            if submitted:
-                # Meal aktualisieren
-                with get_db() as conn:
-                    conn.execute(
-                        "UPDATE meal SET name=?, category=? WHERE id=?",
-                        (new_name, new_category, meal['id'])
-                    )
-                    conn.commit()
-                st.success("✔️ " + ("Gericht aktualisiert!" if lang=="DE" else "Meal updated!"))
-                st.rerun()
+        # Bearbeitungsformular nur anzeigen, wenn Flag gesetzt
+        if st.session_state.get(f"edit_meal_{meal['id']}", False):
+            with st.form(f"edit_meal_form_{meal['id']}"):
+                new_name = st.text_input(
+                    ("Gericht" if lang=="DE" else "Meal name"),
+                    value=meal["name"]
+                )
+                new_category = st.selectbox(
+                    ("Kategorie" if lang=="DE" else "Category"),
+                    options=CATEGORIES,
+                    index=CATEGORIES.index(meal["category"]),
+                    format_func=lambda c: CATEGORY_LABELS.get(c, {"DE": c, "EN": c})[lang]
+                )
+                submitted = st.form_submit_button("💾 " + ("Speichern" if lang=="DE" else "Save"))
+                if submitted:
+                    with get_db() as conn:
+                        conn.execute(
+                            "UPDATE meal SET name=?, category=? WHERE id=?",
+                            (new_name, new_category, meal['id'])
+                        )
+                        conn.commit()
+                    st.success("✔️ " + ("Gericht aktualisiert!" if lang=="DE" else "Meal updated!"))
+                    st.session_state[f"edit_meal_{meal['id']}"] = False
+                    st.rerun()
 
         # 2️⃣ Zutaten
         st.markdown(f"#### {'Zutaten' if lang=='DE' else 'Ingredients'}")
@@ -432,4 +437,3 @@ if st.session_state.detail:
         if st.button(UI["back"][lang]):
             st.session_state.detail = None
             st.rerun()
-
