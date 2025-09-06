@@ -47,7 +47,18 @@ init_db()
 
 # interne Keys
 CATEGORIES = ["Vegan", "Vegetarisch", "Fleisch"]
-DAYS_DE    = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+
+# Labels pro Sprache
+CATEGORY_LABELS = {
+"Vegan": {"DE": "Vegan", "EN": "Vegan"},
+"Vegetarisch": {"DE": "Vegetarisch", "EN": "Vegetarian"},
+"Fleisch": {"DE": "Fleisch", "EN": "Meat"},
+}
+# Wochentage
+DAYS = {
+"DE": ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"],
+"EN": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+}
 
 # UI-Labels & Übersetzungen
 UI = {
@@ -263,6 +274,7 @@ elif st.session_state.view == "manage":
             category    = st.selectbox(
                              UI["form_category"][lang],
                              options=CATEGORIES
+                             format_func=lambda c: CATEGORY_LABELS.get(c, {"DE": c, "EN": c})[lang]
                          )
             recipe      = st.text_area(UI["form_recipe"][lang], key="add_recipe")
             ingredients = st.text_input(UI["form_ings"][lang], key="add_ings")
@@ -287,7 +299,10 @@ elif st.session_state.view == "manage":
                     f"<div class='meal-card' style='background:{color}'>",
                     unsafe_allow_html=True
                 )
-                st.markdown(f"**{meal['name']}**", unsafe_allow_html=True)
+              st.markdown(
+                f"**{meal['name']} ({CATEGORY_LABELS.get(meal['category'], {'DE': meal['category'], 'EN': meal['category']})[lang]})**",
+                unsafe_allow_html=True
+        )
                 if st.button(UI["details"][lang], key=f"detail_manage_{meal['id']}"):
                     show_meal_detail(meal['id'])
                 if st.button(UI["delete"][lang], key=f"del_manage_{meal['id']}"):
@@ -304,7 +319,10 @@ if st.session_state.detail:
             f"<div class='meal-card' style='background:{color}'>",
             unsafe_allow_html=True
         )
-        st.markdown(f"### {meal['name']} ({meal['category']})", unsafe_allow_html=True)
+        st.markdown(
+            f"### {meal['name']} ({CATEGORY_LABELS.get(meal['category'], {'DE': meal['category'], 'EN': meal['category']})[lang]})",
+            unsafe_allow_html=True
+        )
         st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown(f"#### {'Zutaten' if lang=='DE' else 'Ingredients'}")
