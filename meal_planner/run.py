@@ -146,8 +146,10 @@ def delete_ingredient(ing_id):
 
 # Session State initialisieren
 for key, default in [
-    ("view", "plan"), ("plan", None),
-    ("detail", None), ("lang", "DE")
+    ("view", "plan"),
+    ("plan", {}),  # dict pro Sprache
+    ("detail", None),
+    ("lang", "DE")
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
@@ -161,9 +163,9 @@ lang = st.sidebar.radio(
 )
 
 # Woche initial befüllen (sprachabhängig)
-if st.session_state.plan is None:
+if lang not in st.session_state.plan or not st.session_state.plan[lang]:
     meals = get_meals()
-    st.session_state.plan = {
+    st.session_state.plan[lang] = {
         tag: (meals and random.choice(meals)["id"]) or None
         for tag in DAYS[lang]
     }
@@ -227,8 +229,8 @@ if st.session_state.view == "plan":
 
     # Spalten für die 7 Wochentage
     cols = st.columns(7)
-    for i, tag in enumerate(DAYS[lang]):
-        meal_id = st.session_state.plan.get(tag)
+for i, tag in enumerate(DAYS[lang]):
+    meal_id = st.session_state.plan[lang].get(tag)
         meal, _ = get_meal(meal_id)
         with cols[i]:
             st.markdown(f"**{tag}**", unsafe_allow_html=True)
@@ -247,7 +249,7 @@ if st.session_state.view == "plan":
     # Ganze Woche neu würfeln
     if st.button(UI["reroll_week"][lang]):
         meals = get_meals()
-        st.session_state.plan = {
+        st.session_state.plan[lang] = {
             tag: (meals and random.choice(meals)["id"]) or None
             for tag in DAYS[lang]
         }
