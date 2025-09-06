@@ -224,41 +224,34 @@ def show_meal_detail(meal_id):
 if st.session_state.view == "plan":
     st.title(UI["plan_title"][lang])
     st.markdown(UI["plan_header"][lang])
+
+    # Spalten für die 7 Wochentage
     cols = st.columns(7)
-      for i, tag in enumerate(DAYS[lang]):
+    for i, tag in enumerate(DAYS[lang]):
         meal_id = st.session_state.plan.get(tag)
         meal, _ = get_meal(meal_id)
         with cols[i]:
             st.markdown(f"**{tag}**", unsafe_allow_html=True)
             if meal:
                 color = CATEGORY_COLORS.get(meal["category"], "#333")
-                st.markdown(
-                    f"<div class='meal-card' style='background:{color}'>",
-                    unsafe_allow_html=True
-                )
+                st.markdown(f"<div class='meal-card' style='background:{color}'>", unsafe_allow_html=True)
                 st.write(meal["name"])
                 if st.button(UI["details"][lang], key=f"detail_{tag}"):
                     show_meal_detail(meal_id)
-                if st.button(
-                    UI["reroll"][lang],
-                    key=f"reroll_{tag}",
-                    help=UI["reroll_help"][lang]
-                ):
+                if st.button(UI["reroll"][lang], key=f"reroll_{tag}", help=UI["reroll_help"][lang]):
                     reroll_day(tag)
                 st.markdown("</div>", unsafe_allow_html=True)
             else:
-                st.markdown(
-                    "<div class='meal-card' style='background:#555'><i>–</i></div>",
-                    unsafe_allow_html=True
-                )
+                st.markdown("<div class='meal-card' style='background:#555'><i>–</i></div>", unsafe_allow_html=True)
 
-if st.button(UI["reroll_week"][lang]):
-    meals = get_meals()
-    st.session_state.plan = {
-        tag: (meals and random.choice(meals)["id"]) or None
-        for tag in DAYS[lang]   # <-- Sprachabhängig
-    }
-    st.rerun()
+    # Ganze Woche neu würfeln
+    if st.button(UI["reroll_week"][lang]):
+        meals = get_meals()
+        st.session_state.plan = {
+            tag: (meals and random.choice(meals)["id"]) or None
+            for tag in DAYS[lang]
+        }
+        st.rerun()
 
     st.divider()
     st.markdown(UI["tip"][lang])
