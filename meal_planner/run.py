@@ -245,6 +245,14 @@ def show_meal_detail(meal_id):
     st.session_state.detail = meal_id
     st.rerun()
 
+def update_meal(meal_id, name, category):
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE meal SET name=?, category=? WHERE id=?",
+            (name, category, meal_id)
+        )
+        conn.commit()
+
 # Wochenplan
 if st.session_state.view == "plan":
     st.title(UI["plan_title"][lang])
@@ -347,6 +355,32 @@ if st.session_state.detail:
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
+        # 1️⃣ Name & Kategorie bearbeiten
+        st.markdown(f"#### {'Gericht bearbeiten' if lang=='DE' else 'Edit Meal'}")
+        with st.form(f"edit_meal_form_{meal['id']}"):
+            new_name = st.text_input(
+                ("Gericht" if lang=="DE" else "Meal name"),
+                value=meal["name"]
+            )
+            new_category = st.selectbox(
+                ("Kategorie" if lang=="DE" else "Category"),
+                options=CATEGORIES,
+                index=CATEGORIES.index(meal["category"]),
+                format_func=lambda c: CATEGORY_LABELS.get(c, {"DE": c, "EN": c})[lang]
+            )
+            submitted = st.form_submit_button("💾 " + ("Speichern" if lang=="DE" else "Save"))
+            if submitted:
+                # Meal aktualisieren
+                with get_db() as conn:
+                    conn.execute(
+                        "UPDATE meal SET name=?, category=? WHERE id=?",
+                        (new_name, new_category, meal['id'])
+                    )
+                    conn.commit()
+                st.success("✔️ " + ("Gericht aktualisiert!" if lang=="DE" else "Meal updated!"))
+                st.rerun()
+
+        # 2️⃣ Zutaten
         st.markdown(f"#### {'Zutaten' if lang=='DE' else 'Ingredients'}")
         for ing in ings:
             col1, col2 = st.columns([4,1])
@@ -367,6 +401,7 @@ if st.session_state.detail:
                 add_ingredient(meal['id'], new_ing.strip())
                 st.rerun()
 
+        # 3️⃣ Rezept
         st.markdown(f"#### {'Rezept' if lang=='DE' else 'Recipe'}")
         recipe = st.text_area(
             ("Rezept bearbeiten" if lang=="DE" else "Edit recipe"),
@@ -380,6 +415,7 @@ if st.session_state.detail:
             update_recipe(meal['id'], recipe)
             st.success("✔️ " + ("Rezept gespeichert!" if lang=="DE" else "Recipe saved!"))
 
+        # 4️⃣ Löschen / Zurück
         c1, c2 = st.columns(2)
         with c1:
             if st.button(UI["delete"][lang], key=f"del_meal_{meal['id']}"):
@@ -396,3 +432,4 @@ if st.session_state.detail:
         if st.button(UI["back"][lang]):
             st.session_state.detail = None
             st.rerun()
+
