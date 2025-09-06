@@ -1,6 +1,6 @@
 {
     "name": "Wochen-Mahlzeiten-Planer",
-    "version": "1.2.4",
+    "version": "1.2.5",
     "slug": "meal_planner",
     "description": "Ein einfacher Mahlzeitenplaner mit Wochenplan und Rezepten.",
     "arch": [
