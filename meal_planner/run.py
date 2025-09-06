@@ -3,6 +3,9 @@ import sqlite3
 import os
 import random
 
+# ----------------------------
+# 1. Datenbank-Pfad & Init
+# ----------------------------
 DB_PATH = "/data/meals.db" if os.path.exists("/data") else "meals.db"
 
 def get_db():
@@ -14,20 +17,22 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
     c.execute("""
-    CREATE TABLE IF NOT EXISTS meal (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        category TEXT NOT NULL,
-        recipe TEXT
-    )""")
+        CREATE TABLE IF NOT EXISTS meal (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            recipe TEXT
+        )""")
     c.execute("""
-    CREATE TABLE IF NOT EXISTS ingredient (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        meal_id INTEGER,
-        FOREIGN KEY(meal_id) REFERENCES meal(id) ON DELETE CASCADE
-    )""")
+        CREATE TABLE IF NOT EXISTS ingredient (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            meal_id INTEGER,
+            FOREIGN KEY(meal_id) REFERENCES meal(id) ON DELETE CASCADE
+        )""")
     conn.commit()
+
+    # Beispiel-Datensatz
     c.execute("SELECT count(*) FROM meal")
     if c.fetchone()[0] == 0:
         c.execute(
@@ -45,43 +50,36 @@ def init_db():
 
 init_db()
 
-# interne Keys
-CATEGORIES = ["Vegan", "Vegetarisch", "Fleisch"]
-DAYS_DE    = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
 
-# UI-Labels & Übersetzungen
-UI = {
-    "lang_radio":    {"DE": "Sprache",                           "EN": "Language"},
-    "plan_title":    {"DE": "🗓️ Wochen-Mahlzeiten-Planer",       "EN": "🗓️ Weekly Meal Planner"},
-    "plan_header":   {"DE": "## Dein Wochenplan",               "EN": "## Your Weekly Plan"},
-    "reroll":        {"DE": "🔄 Neu würfeln",                   "EN": "🔄 Reroll"},
-    "reroll_help":   {"DE": "Neu würfeln",                      "EN": "Reroll this day"},
-    "details":       {"DE": "ℹ️ Details",                       "EN": "ℹ️ Details"},
-    "delete":        {"DE": "🗑️ Löschen",                       "EN": "🗑️ Delete"},
-    "reroll_week":   {"DE": "Woche komplett neu würfeln",       "EN": "Reroll entire week"},
-    "manage_title":  {"DE": "🍽️ Mahlzeiten verwalten",         "EN": "🍽️ Manage Meals"},
-    "manage_desc":   {"DE": "Lege neue Gerichte an, bearbeite oder lösche bestehende.",
-                      "EN": "Add, edit or delete meals."},
-    "new_meal":      {"DE": "➕ Neue Mahlzeit hinzufügen",      "EN": "➕ Add New Meal"},
-    "form_name":     {"DE": "Gericht",                         "EN": "Meal name"},
-    "form_category": {"DE": "Kategorie",                       "EN": "Category"},
-    "form_recipe":   {"DE": "Rezept",                          "EN": "Recipe"},
-    "form_ings":     {"DE": "Zutaten (Kommagetrennt)",         "EN": "Ingredients (comma separated)"},
-    "add_button":    {"DE": "✔️ Anlegen",                      "EN": "✔️ Create"},
-    "success_add":   {"DE": "Mahlzeit gespeichert!",           "EN": "Meal saved!"},
-    "tip":           {"DE": "**Tipp:** Neue Gerichte kannst du im Menü 'Mahlzeiten verwalten' anlegen.",
-                      "EN": "**Tip:** You can add new meals under 'Manage Meals'."},
-    "back":          {"DE": "⬅️ Zurück",                        "EN": "⬅️ Back"},
-    "no_exist":      {"DE": "Dieses Gericht existiert nicht mehr.","EN": "This meal no longer exists."},
+# ----------------------------
+# 2. Sprach-abhängige Werte
+# ----------------------------
+if "lang" not in st.session_state:
+    st.session_state.lang = "DE"
+
+# Wochentage
+DAYS = {
+    "DE": ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"],
+    "EN": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 }
 
-# Farben pro Kategorie
+# Kategorien
+CATEGORIES = {
+    "DE": ["Vegan","Vegetarisch","Fleisch"],
+    "EN": ["Vegan","Vegetarian","Meat"]
+}
+
+# Farben pro Kategorie (unabhängig von Sprache)
 CATEGORY_COLORS = {
     "Vegan":      "#27ae60",
     "Vegetarisch":"#f1c40f",
     "Fleisch":    "#c0392b"
 }
 
+
+# ----------------------------
+# 3. DB-Funktionen
+# ----------------------------
 def get_meals():
     with get_db() as conn:
         return conn.execute("SELECT * FROM meal").fetchall()
@@ -133,66 +131,72 @@ def delete_ingredient(ing_id):
         conn.execute("DELETE FROM ingredient WHERE id=?", (ing_id,))
         conn.commit()
 
-# Session State initialisieren
+
+# ----------------------------
+# 4. Session State Defaults
+# ----------------------------
 for key, default in [
-    ("view", "plan"), ("plan", None),
-    ("detail", None), ("lang", "DE")
+    ("view",      "plan"),
+    ("plan",      None),
+    ("detail",    None),
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
 
-# Sidebar: Sprache
+# initialer Sidebar-Sprachwechsel
 lang = st.sidebar.radio(
-    UI["lang_radio"][st.session_state.lang],
-    options=["DE", "EN"],
-    index=0 if st.session_state.lang == "DE" else 1,
+    "Sprache" if st.session_state.lang=="DE" else "Language",
+    options=["DE","EN"],
+    index=0 if st.session_state.lang=="DE" else 1,
     key="lang"
 )
 
-# Woche initial befüllen
+
+# ----------------------------
+# 5. Wochenplan befüllen
+# ----------------------------
 if st.session_state.plan is None:
     meals = get_meals()
     st.session_state.plan = {
         tag: (meals and random.choice(meals)["id"]) or None
-        for tag in DAYS_DE
+        for tag in DAYS[lang]
     }
 
-# Dünneres CSS-Upgrade
+
+# ----------------------------
+# 6. Style
+# ----------------------------
 st.markdown("""
-    <style>
-    .meal-card {
-      color: #fff;
-      padding: 0.25rem 0.5rem;
-      margin-bottom: 0.25rem;
-      border-radius: 6px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-      font-size: 0.85rem;
-    }
-    .stButton > button {
-      padding: 0.2rem 0.4rem;
-      margin: 0.1rem;
-      font-size: 0.7rem;
-      border-radius: 6px;
-      background-color: #444;
-      color: #fff;
-      border: none;
-    }
-    .stButton > button:hover {
-      background-color: #555;
-    }
-    </style>
+<style>
+.meal-card {
+  color: #fff;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+}
+.stButton > button {
+  padding: 0.2rem 0.4rem;
+  margin-right: 0.2rem;
+  font-size: 0.8rem;
+}
+</style>
 """, unsafe_allow_html=True)
 
-# Navigation
-st.sidebar.title(UI["manage_title"][lang])
+
+# ----------------------------
+# 7. Navigation
+# ----------------------------
 pages = {
-    "🗓️ " + UI["plan_title"][lang]: "plan",
-    UI["manage_title"][lang]: "manage"
+    "🗓️ Wochenplan" if lang=="DE" else "🗓️ Weekly Plan": "plan",
+    "Mahlzeiten verwalten" if lang=="DE" else "Manage Meals": "manage"
 }
 choice = st.sidebar.radio("", list(pages.keys()))
 st.session_state.view = pages[choice]
 
-# Hilfsfunktionen
+
+# ----------------------------
+# 8. Hilfsfunktionen UI
+# ----------------------------
 def reroll_day(day):
     meals = get_meals()
     current = st.session_state.plan.get(day)
@@ -209,150 +213,120 @@ def show_meal_detail(meal_id):
     st.session_state.detail = meal_id
     st.rerun()
 
-# Wochenplan
+
+# ----------------------------
+# 9. View: Wochenplan
+# ----------------------------
 if st.session_state.view == "plan":
-    st.title(UI["plan_title"][lang])
-    st.markdown(UI["plan_header"][lang])
+    st.title("🗓️ Wochen-Mahlzeiten-Planer" if lang=="DE" else "🗓️ Weekly Meal Planner")
+    st.markdown("## Dein Wochenplan" if lang=="DE" else "## Your Weekly Plan")
+
     cols = st.columns(7)
-    for i, tag in enumerate(DAYS_DE):
-        meal_id = st.session_state.plan.get(tag)
-        meal, _ = get_meal(meal_id)
+    for i, tag in enumerate(DAYS[lang]):
         with cols[i]:
-            st.markdown(f"**{tag}**", unsafe_allow_html=True)
+            st.markdown(f"**{tag}**")
+            meal_id = st.session_state.plan.get(tag)
+            meal, _ = get_meal(meal_id)
             if meal:
                 color = CATEGORY_COLORS.get(meal["category"], "#333")
-                st.markdown(
-                    f"<div class='meal-card' style='background:{color}'>",
-                    unsafe_allow_html=True
-                )
+                st.markdown(f"<div class='meal-card' style='background:{color}'>", unsafe_allow_html=True)
                 st.write(meal["name"])
-                if st.button(UI["details"][lang], key=f"detail_{tag}"):
-                    show_meal_detail(meal_id)
-                if st.button(
-                    UI["reroll"][lang],
-                    key=f"reroll_{tag}",
-                    help=UI["reroll_help"][lang]
-                ):
-                    reroll_day(tag)
+                st.button("ℹ️" if lang=="DE" else "ℹ️", key=f"detail_{tag}", on_click=show_meal_detail, args=(meal_id,))
+                st.button("🔄" if lang=="DE" else "🔄", key=f"reroll_{tag}", help="Neu würfeln" if lang=="DE" else "Reroll", on_click=reroll_day, args=(tag,))
                 st.markdown("</div>", unsafe_allow_html=True)
             else:
-                st.markdown(
-                    "<div class='meal-card' style='background:#555'><i>–</i></div>",
-                    unsafe_allow_html=True
-                )
+                st.markdown("<div class='meal-card' style='background:#555'><i>–</i></div>", unsafe_allow_html=True)
 
-    if st.button(UI["reroll_week"][lang]):
+    if st.button("Woche komplett neu würfeln" if lang=="DE" else "Reroll entire week"):
         meals = get_meals()
-        st.session_state.plan = {
-            tag: (meals and random.choice(meals)["id"]) or None
-            for tag in DAYS_DE
-        }
+        st.session_state.plan = {tag: (meals and random.choice(meals)["id"]) or None for tag in DAYS[lang]}
         st.rerun()
 
     st.divider()
-    st.markdown(UI["tip"][lang])
+    st.markdown("**Tipp:** Neue Gerichte kannst du im Menü 'Mahlzeiten verwalten' anlegen." if lang=="DE" else "**Tip:** You can add new meals under 'Manage Meals'.")
 
-# Mahlzeiten verwalten
+
+# ----------------------------
+# 10. View: Manage Meals
+# ----------------------------
 elif st.session_state.view == "manage":
-    st.title(UI["manage_title"][lang])
-    st.markdown(UI["manage_desc"][lang])
+    st.title("🍽️ Mahlzeiten verwalten" if lang=="DE" else "🍽️ Manage Meals")
+    st.markdown(
+        "Lege neue Gerichte an, bearbeite oder lösche bestehende."
+        if lang=="DE" else
+        "Add, edit or delete meals."
+    )
 
-    with st.expander(UI["new_meal"][lang]):
+    with st.expander("➕ Neue Mahlzeit hinzufügen" if lang=="DE" else "➕ Add New Meal"):
         with st.form("add_meal_form"):
-            name        = st.text_input(UI["form_name"][lang], key="add_name")
+            name        = st.text_input("Gericht" if lang=="DE" else "Meal name")
             category    = st.selectbox(
-                             UI["form_category"][lang],
-                             options=CATEGORIES
+                             "Kategorie" if lang=="DE" else "Category",
+                             options=CATEGORIES[lang]
                          )
-            recipe      = st.text_area(UI["form_recipe"][lang], key="add_recipe")
-            ingredients = st.text_input(UI["form_ings"][lang], key="add_ings")
-            submitted   = st.form_submit_button(UI["add_button"][lang])
+            recipe      = st.text_area("Rezept" if lang=="DE" else "Recipe")
+            ingredients = st.text_input("Zutaten (Kommagetrennt)" if lang=="DE" else "Ingredients (comma separated)")
+            submitted   = st.form_submit_button("✔️ Anlegen" if lang=="DE" else "✔️ Create")
             if submitted and name and category:
                 add_meal(name, category, recipe, ingredients.split(","))
-                st.success(UI["success_add"][lang])
+                st.success("Mahlzeit gespeichert!" if lang=="DE" else "Meal saved!")
                 st.rerun()
 
     meals = get_meals()
-    for cat in CATEGORIES:
+    for cat in CATEGORIES[lang]:
         color = CATEGORY_COLORS.get(cat, "#333")
-        st.markdown(
-            f"<h3 class='category-header' style='color:{color}'>{cat}</h3>",
-            unsafe_allow_html=True
-        )
+        st.markdown(f"<h3 style='color:{color}'>{cat}</h3>", unsafe_allow_html=True)
         cols = st.columns(4)
         cat_meals = [m for m in meals if m["category"] == cat]
         for i, meal in enumerate(cat_meals):
             with cols[i % 4]:
-                st.markdown(
-                    f"<div class='meal-card' style='background:{color}'>",
-                    unsafe_allow_html=True
-                )
+                st.markdown(f"<div class='meal-card' style='background:{color}'>", unsafe_allow_html=True)
                 st.markdown(f"**{meal['name']}**", unsafe_allow_html=True)
-                if st.button(UI["details"][lang], key=f"detail_manage_{meal['id']}"):
-                    show_meal_detail(meal['id'])
-                if st.button(UI["delete"][lang], key=f"del_manage_{meal['id']}"):
-                    delete_and_refresh(meal['id'])
+                st.button("ℹ️" if lang=="DE" else "ℹ️", key=f"detail_manage_{meal['id']}", on_click=show_meal_detail, args=(meal['id'],))
+                st.button("🗑️ Löschen" if lang=="DE" else "🗑️ Delete", key=f"del_manage_{meal['id']}", on_click=delete_and_refresh, args=(meal['id'],))
                 st.markdown("</div>", unsafe_allow_html=True)
 
-# Detailansicht
+
+# ----------------------------
+# 11. Detail-Ansicht
+# ----------------------------
 if st.session_state.detail:
     meal, ings = get_meal(st.session_state.detail)
     if meal:
         st.markdown("---")
         color = CATEGORY_COLORS.get(meal["category"], "#333")
-        st.markdown(
-            f"<div class='meal-card' style='background:{color}'>",
-            unsafe_allow_html=True
-        )
-        st.markdown(f"### {meal['name']} ({meal['category']})", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='meal-card' style='background:{color}'>", unsafe_allow_html=True)
+        st.markdown(f"### {meal['name']} ({meal['category']})")
+        st.markdown("</div>")
 
-        st.markdown(f"#### {'Zutaten' if lang=='DE' else 'Ingredients'}")
+        st.markdown("#### Zutaten" if lang=="DE" else "#### Ingredients")
         for ing in ings:
-            col1, col2 = st.columns([4,1])
-            col1.write(ing["name"])
-            if col2.button(UI["delete"][lang], key=f"del_ing_{ing['id']}"):
-                delete_ingredient(ing['id'])
-                st.rerun()
+            c1, c2 = st.columns([4,1])
+            c1.write(ing["name"])
+            c2.button("🗑️" if lang=="DE" else "🗑️", key=f"del_ing_{ing['id']}", on_click=delete_ingredient, args=(ing['id'],))
 
-        new_ing = st.text_input(
-            "➕ " + ("Neue Zutat" if lang=="DE" else "New ingredient"),
-            key=f"new_ing_{meal['id']}"
-        )
-        if st.button(
-            "✔️ " + ("Hinzufügen" if lang=="DE" else "Add"),
-            key=f"add_ing_{meal['id']}"
-        ):
+        new_ing = st.text_input("➕ Neue Zutat" if lang=="DE" else "➕ New ingredient")
+        if st.button("✔️ Hinzufügen" if lang=="DE" else "✔️ Add"):
             if new_ing.strip():
-                add_ingredient(meal['id'], new_ing.strip())
+                add_ingredient(meal["id"], new_ing.strip())
                 st.rerun()
 
-        st.markdown(f"#### {'Rezept' if lang=='DE' else 'Recipe'}")
+        st.markdown("#### Rezept" if lang=="DE" else "#### Recipe")
         recipe = st.text_area(
-            ("Rezept bearbeiten" if lang=="DE" else "Edit recipe"),
-            meal["recipe"] or "",
-            key=f"recipe_{meal['id']}"
+            "Rezept bearbeiten" if lang=="DE" else "Edit recipe",
+            meal["recipe"] or ""
         )
-        if st.button(
-            "💾 " + ("Speichern" if lang=="DE" else "Save"),
-            key=f"save_recipe_{meal['id']}"
-        ):
-            update_recipe(meal['id'], recipe)
-            st.success("✔️ " + ("Rezept gespeichert!" if lang=="DE" else "Recipe saved!"))
+        if st.button("💾 Speichern" if lang=="DE" else "💾 Save"):
+            update_recipe(meal["id"], recipe)
+            st.success("Rezept gespeichert!" if lang=="DE" else "Recipe saved!")
 
         c1, c2 = st.columns(2)
         with c1:
-            if st.button(UI["delete"][lang], key=f"del_meal_{meal['id']}"):
-                delete_meal(meal['id'])
-                st.session_state.detail = None
-                st.rerun()
+            st.button("🗑️ Löschen" if lang=="DE" else "🗑️ Delete", on_click=delete_meal, args=(meal["id"],))
         with c2:
-            if st.button(UI["back"][lang], key=f"back_{meal['id']}"):
-                st.session_state.detail = None
-                st.rerun()
+            st.button("⬅️ Zurück" if lang=="DE" else "⬅️ Back", on_click=lambda: st.session_state.update(detail=None))
+
 
     else:
-        st.error(UI["no_exist"][lang])
-        if st.button(UI["back"][lang]):
-            st.session_state.detail = None
-            st.rerun()
+        st.error("Dieses Gericht existiert nicht mehr." if lang=="DE" else "This meal no longer exists.")
+        st.button("⬅️ Zurück zum Plan" if lang=="DE" else "⬅️ Back to plan", on_click=lambda: st.session_state.update(detail=None))
