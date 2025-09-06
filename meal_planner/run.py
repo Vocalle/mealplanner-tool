@@ -1,33 +1,17 @@
 import streamlit as st
+import json
 import os
 
-# Speicherort für das Hintergrundbild im Add-on
-IMAGE_PATH = "/data/background.jpg"
-
-# 1. Upload-Widget in der Sidebar
-st.sidebar.header("Hintergrundbild")
-uploaded_file = st.sidebar.file_uploader(
-    "Eigenes Hintergrundbild hochladen (JPG/PNG)", type=["jpg", "jpeg", "png"]
-)
-if uploaded_file is not None:
-    with open(IMAGE_PATH, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    st.sidebar.success("Bild gespeichert! Seite ggf. neuladen.")
-
-# 2. Hintergrundbild wählen (hochgeladen oder Fallback)
-if os.path.exists(IMAGE_PATH):
-    # Achtung: Streamlit in HA Add-ons kann lokale Images nicht immer direkt anzeigen.
-    # Base64-Embeddung als Fallback für volle Kompatibilität:
-    import base64
-    with open(IMAGE_PATH, "rb") as img_file:
-        img_bytes = img_file.read()
-        encoded = base64.b64encode(img_bytes).decode()
-    background_url = f"data:image/jpeg;base64,{encoded}"
+# 1. Hintergrundbild-URL aus der Add-on-Konfiguration lesen
+options_path = "/data/options.json"
+if os.path.exists(options_path):
+    with open(options_path) as f:
+        options = json.load(f)
+    background_url = options.get("background_url", "https://images.unsplash.com/photo-1506744038136-46273834b3fb")
 else:
-    # Standardbild
     background_url = "https://images.unsplash.com/photo-1506744038136-46273834b3fb"
 
-# 3. Custom CSS einbinden
+# 2. CSS für das Hintergrundbild einbinden
 css = f"""
 body {{
     background-image: url('{background_url}');
@@ -45,6 +29,9 @@ body {{
 """
 st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
-# 4. Beispiel-Content (hier baust du deine UI weiter aus)
+# 3. Hinweis für den User (optional)
+st.info("Das Hintergrundbild kann in der Add-on-Konfiguration von Home Assistant geändert werden (Option: background_url).")
+
+# 4. Dein weiterer Content...
 st.title("Wochenplan")
 st.markdown('<div class="block">Hier steht dein Wochenplan-Content...</div>', unsafe_allow_html=True)
