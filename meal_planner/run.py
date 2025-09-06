@@ -44,12 +44,13 @@ init_db()
 DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
 CATEGORIES = ["Vegan", "Vegetarisch", "Fleisch"]
 
-# Datenbank-Funktionen
 def get_meals():
     with get_db() as conn:
         return conn.execute("SELECT * FROM meal").fetchall()
 
 def get_meal(meal_id):
+    if meal_id is None:
+        return None, []
     with get_db() as conn:
         meal = conn.execute("SELECT * FROM meal WHERE id=?", (meal_id,)).fetchone()
         ings = conn.execute("SELECT * FROM ingredient WHERE meal_id=?", (meal_id,)).fetchall()
@@ -85,7 +86,7 @@ def delete_ingredient(ing_id):
         conn.execute("DELETE FROM ingredient WHERE id=?", (ing_id,))
         conn.commit()
 
-# Session State für Navigation
+# Session State
 if "view" not in st.session_state:
     st.session_state.view = "plan"
 if "plan" not in st.session_state:
@@ -94,11 +95,12 @@ if "plan" not in st.session_state:
 if "detail" not in st.session_state:
     st.session_state.detail = None
 
-# CSS für dunkles Theme & Kacheln
+# CSS für Kacheln und Buttons
 st.markdown("""
     <style>
     .meal-card {background: #23272b; color: #fff; border-radius: 10px; padding: 16px; margin-bottom: 10px; box-shadow: 0 2px 8px #1115;}
     .category-header {color:#88CCFF;}
+    .stButton button { margin: 2px 0;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -108,7 +110,7 @@ seiten = {"Wochenplan": "plan", "Mahlzeiten verwalten": "manage"}
 choice = st.sidebar.radio("Seite wählen", list(seiten.keys()))
 st.session_state.view = seiten[choice]
 
-# Hilfsfunktionen für Buttons
+# Hilfsfunktionen
 def reroll_day(day):
     meals = get_meals()
     current = st.session_state.plan.get(day)
@@ -128,23 +130,25 @@ def show_meal_detail(meal_id):
 # Wochenplan
 if st.session_state.view == "plan":
     st.title("🗓️ Wochen-Mahlzeiten-Planer")
-
     st.markdown("## Dein Wochenplan")
     cols = st.columns(7)
     for i, tag in enumerate(DAYS):
         with cols[i]:
             st.markdown(f"**{tag}**", unsafe_allow_html=True)
             meal_id = st.session_state.plan.get(tag)
-            if meal_id:
-                meal, _ = get_meal(meal_id)
-                st.write(meal['name'])
-                st.write(meal['category'])
-                if st.button("🔄", key=f"reroll_{tag}", help="Neu würfeln"):
-                    reroll_day(tag)
-                if st.button("Details", key=f"detail_{tag}"):
-                    show_meal_detail(meal_id)
-            else:
-                st.write("Kein Gericht gewählt")
+            meal, _ = get_meal(meal_id)
+            with st.container():
+                if meal:
+                    st.markdown(f"<div class='meal-card'>", unsafe_allow_html=True)
+                    st.write(meal['name'])
+                    st.write(meal['category'])
+                    if st.button("🔄", key=f"reroll_{tag}", help="Neu würfeln"):
+                        reroll_day(tag)
+                    if st.button("Details", key=f"detail_{tag}"):
+                        show_meal_detail(meal_id)
+                    st.markdown("</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div class='meal-card'><i>Kein Gericht verfügbar</i></div>", unsafe_allow_html=True)
 
     if st.button("Woche komplett neu würfeln"):
         meals = get_meals()
@@ -172,7 +176,6 @@ elif st.session_state.view == "manage":
                 st.success("Mahlzeit gespeichert!")
                 st.rerun()
 
-    # Mahlzeiten gruppiert nach Kategorie
     meals = get_meals()
     for cat in CATEGORIES:
         st.markdown(f"<h3 class='category-header'>{cat}</h3>", unsafe_allow_html=True)
@@ -181,35 +184,44 @@ elif st.session_state.view == "manage":
         for i, meal in enumerate(cat_meals):
             with cols[i % 4]:
                 st.markdown(f"<div class='meal-card'>", unsafe_allow_html=True)
-                st.markdown(f"**{meal['name']}**", unsafe_allow_html=True)
-                if st.button("Details", key=f"detail_manage_{meal['id']}"):
-                    show_meal_detail(meal['id'])
-                if st.button("🗑️ Löschen", key=f"del_{meal['id']}"):
-                    delete_and_refresh(meal['id'])
+                if meal:
+                    st.markdown(f"**{meal['name']}**", unsafe_allow_html=True)
+                    if st.button("Details", key=f"detail_manage_{meal['id']}"):
+                        show_meal_detail(meal['id'])
+                    if st.button("🗑️ Löschen", key=f"del_{meal['id']}"):
+                        delete_and_refresh(meal['id'])
+                else:
+                    st.markdown("<i>Kein Gericht verfügbar</i>", unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
 
 # Detailansicht (Modal)
 if st.session_state.detail:
     meal, ings = get_meal(st.session_state.detail)
-    st.markdown("---")
-    st.markdown(f"### {meal['name']} ({meal['category']})")
-    st.markdown("#### Zutaten")
-    for ing in ings:
-        col1, col2 = st.columns([4,1])
-        col1.write(ing["name"])
-        if col2.button("🗑️", key=f"del_ing_{meal['id']}_{ing['id']}"):
-            delete_ingredient(ing["id"])
+    if meal:
+        st.markdown("---")
+        st.markdown(f"### {meal['name']} ({meal['category']})")
+        st.markdown("#### Zutaten")
+        for ing in ings:
+            col1, col2 = st.columns([4,1])
+            col1.write(ing["name"])
+            if col2.button("🗑️", key=f"del_ing_{meal['id']}_{ing['id']}"):
+                delete_ingredient(ing["id"])
+                st.rerun()
+        new_ing = st.text_input("Neue Zutat", key=f"new_ing_{meal['id']}")
+        if st.button("Zutat hinzufügen", key=f"add_ing_{meal['id']}"):
+            if new_ing.strip():
+                add_ingredient(meal['id'], new_ing.strip())
+                st.rerun()
+        st.markdown("#### Rezept")
+        recipe = st.text_area("Rezept bearbeiten", meal["recipe"] or "", key=f"recipe_{meal['id']}")
+        if st.button("Rezept speichern", key=f"save_recipe_{meal['id']}"):
+            update_recipe(meal['id'], recipe)
+            st.success("Rezept gespeichert!")
+        if st.button("Zurück", key=f"back_{meal['id']}"):
+            st.session_state.detail = None
             st.rerun()
-    new_ing = st.text_input("Neue Zutat", key=f"new_ing_{meal['id']}")
-    if st.button("Zutat hinzufügen", key=f"add_ing_{meal['id']}"):
-        if new_ing.strip():
-            add_ingredient(meal['id'], new_ing.strip())
+    else:
+        st.error("Dieses Gericht existiert nicht mehr.")
+        if st.button("Zurück zum Plan"):
+            st.session_state.detail = None
             st.rerun()
-    st.markdown("#### Rezept")
-    recipe = st.text_area("Rezept bearbeiten", meal["recipe"] or "", key=f"recipe_{meal['id']}")
-    if st.button("Rezept speichern", key=f"save_recipe_{meal['id']}"):
-        update_recipe(meal['id'], recipe)
-        st.success("Rezept gespeichert!")
-    if st.button("Zurück", key=f"back_{meal['id']}"):
-        st.session_state.detail = None
-        st.rerun()
