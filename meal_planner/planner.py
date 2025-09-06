@@ -3,67 +3,77 @@ import json
 import os
 from translations import DE, EN
 
-# Sprachlogik
+# Sprache setzen
 if "lang" not in st.session_state:
     st.session_state.lang = "DE"
 T = DE if st.session_state.lang == "DE" else EN
 
-# Sprachwechsel-Button unten rechts
-st.markdown("""
-    <style>
-    .lang-button {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 9999;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# Sidebar Navigation
+with st.sidebar:
+    st.header(T["nav_header"])
+    st.subheader(T["nav_sub"])
+    page = st.radio("Seite", [T["nav_plan"], T["nav_manage"]], key="page")
 
-if st.button(T["language_toggle"], key="lang_button"):
-    st.session_state.lang = "EN" if st.session_state.lang == "DE" else "DE"
-    st.experimental_rerun()
-
-# Titel
-st.title(T["title"])
+    st.markdown("---")
+    st.write("🌐 Sprache")
+    if st.button(T["language_toggle"], key="lang_button_sidebar"):
+        st.session_state.lang = "EN" if st.session_state.lang == "DE" else "DE"
+        st.experimental_rerun()
 
 # Datenpfad
 DATA_PATH = "/data/meals.json"
 
-# Lade bestehende Daten
+# Lade Daten
 if os.path.exists(DATA_PATH):
     with open(DATA_PATH, "r") as f:
         meals = json.load(f)
 else:
     meals = {}
 
-# Wochentag auswählen
-weekday = st.selectbox(T["weekday"], ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"])
+# Hauptseite: Wochenplan
+if page == T["nav_plan"]:
+    st.title(T["title"])
+    st.subheader(T["subtitle"])
 
-# Rezept eingeben
-st.subheader(T["add_recipe"])
-recipe_name = st.text_input(T["recipe_name"])
-ingredients = st.text_area(T["ingredients"])
-instructions = st.text_area(T["instructions"])
+    weekdays = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+    meals_of_day = ["Frühstück", "Mittagessen", "Abendessen"]
 
-# Eintragen
-if st.button(T["submit"]):
-    if weekday not in meals:
-        meals[weekday] = []
-    meals[weekday].append({
-        "name": recipe_name,
-        "ingredients": ingredients,
-        "instructions": instructions
-    })
-    with open(DATA_PATH, "w") as f:
-        json.dump(meals, f, indent=2)
-    st.success(f"{T['save']}!")
+    for day in weekdays:
+        st.markdown(f"### {day}")
+        cols = st.columns(3)
+        for i, meal_time in enumerate(meals_of_day):
+            with cols[i]:
+                st.markdown(f"**{meal_time}**")
+                st.button("Details", key=f"{day}_{meal_time}")
 
-# Bestehende Rezepte anzeigen
-if weekday in meals:
-    st.subheader(f"{weekday}:")
-    for i, meal in enumerate(meals[weekday]):
-        st.markdown(f"**{meal['name']}**")
-        st.markdown(f"*{T['ingredients']}:* {meal['ingredients']}")
-        st.markdown(f"*{T['instructions']}:* {meal['instructions']}")
-        st.markdown("---")
+    st.markdown("---")
+    st.button(T["edit_plan"])
+    st.caption(T["tips"])
+
+# Seite: Mahlzeiten verwalten
+elif page == T["nav_manage"]:
+    st.title(T["nav_manage"])
+    weekday = st.selectbox(T["weekday"], ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"])
+    recipe_name = st.text_input(T["recipe_name"])
+    ingredients = st.text_area(T["ingredients"])
+    instructions = st.text_area(T["instructions"])
+
+    if st.button(T["submit"]):
+        if weekday not in meals:
+            meals[weekday] = []
+        meals[weekday].append({
+            "name": recipe_name,
+            "ingredients": ingredients,
+            "instructions": instructions
+        })
+        with open(DATA_PATH, "w") as f:
+            json.dump(meals, f, indent=2)
+        st.success(T["save"])
+
+    if weekday in meals:
+        st.subheader(f"{weekday}:")
+        for meal in meals[weekday]:
+            st.markdown(f"**{meal['name']}**")
+            st.markdown(f"*{T['ingredients']}:* {meal['ingredients']}")
+            st.markdown(f"*{T['instructions']}:* {meal['instructions']}")
+            st.markdown("---")
