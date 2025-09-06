@@ -268,46 +268,46 @@ elif st.session_state.view == "manage":
     st.title(UI["manage_title"][lang])
     st.markdown(UI["manage_desc"][lang])
 
+    # Neue Mahlzeit hinzufügen
     with st.expander(UI["new_meal"][lang]):
         with st.form("add_meal_form"):
-            name        = st.text_input(UI["form_name"][lang], key="add_name")
-            category    = st.selectbox(
-                             UI["form_category"][lang],
-                             options=CATEGORIES,
-                             format_func=lambda c: CATEGORY_LABELS.get(c, {"DE": c, "EN": c})[lang]
-                         )
-            recipe      = st.text_area(UI["form_recipe"][lang], key="add_recipe")
+            name = st.text_input(UI["form_name"][lang], key="add_name")
+            category = st.selectbox(
+                UI["form_category"][lang],
+                options=CATEGORIES,
+                format_func=lambda c: CATEGORY_LABELS.get(c, {"DE": c, "EN": c})[lang]
+            )
+            recipe = st.text_area(UI["form_recipe"][lang], key="add_recipe")
             ingredients = st.text_input(UI["form_ings"][lang], key="add_ings")
-            submitted   = st.form_submit_button(UI["add_button"][lang])
+            submitted = st.form_submit_button(UI["add_button"][lang])
             if submitted and name and category:
                 add_meal(name, category, recipe, ingredients.split(","))
                 st.success(UI["success_add"][lang])
                 st.rerun()
 
+    # Alle Mahlzeiten anzeigen
     meals = get_meals()
     for cat in CATEGORIES:
         color = CATEGORY_COLORS.get(cat, "#333")
         st.markdown(
-            f"<h3 class='category-header' style='color:{color}'>{cat}</h3>",
+            f"<h3 class='category-header' style='color:{color}'>{CATEGORY_LABELS.get(cat, {'DE':cat,'EN':cat})[lang]}</h3>",
             unsafe_allow_html=True
         )
         cols = st.columns(4)
         cat_meals = [m for m in meals if m["category"] == cat]
         for i, meal in enumerate(cat_meals):
             with cols[i % 4]:
+                st.markdown(f"<div class='meal-card' style='background:{color}'>", unsafe_allow_html=True)
                 st.markdown(
-                    f"<div class='meal-card' style='background:{color}'>",
+                    f"**{meal['name']} ({CATEGORY_LABELS.get(meal['category'], {'DE': meal['category'], 'EN': meal['category']})[lang]})**",
                     unsafe_allow_html=True
                 )
-             st.markdown(
-    f"**{meal['name']} ({CATEGORY_LABELS.get(meal['category'], {'DE': meal['category'], 'EN': meal['category']})[lang]})**",
-    unsafe_allow_html=True
-)
-if st.button(UI["details"][lang], key=f"detail_manage_{meal['id']}"):
-    show_meal_detail(meal['id'])
-if st.button(UI["delete"][lang], key=f"del_manage_{meal['id']}"):
-    delete_and_refresh(meal['id'])
-st.markdown("</div>", unsafe_allow_html=True)
+                if st.button(UI["details"][lang], key=f"detail_manage_{meal['id']}"):
+                    show_meal_detail(meal['id'])
+                if st.button(UI["delete"][lang], key=f"del_manage_{meal['id']}"):
+                    delete_and_refresh(meal['id'])
+                st.markdown("</div>", unsafe_allow_html=True)
+
 
 
 # Detailansicht
