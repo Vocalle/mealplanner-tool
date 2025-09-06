@@ -273,7 +273,7 @@ elif st.session_state.view == "manage":
             name        = st.text_input(UI["form_name"][lang], key="add_name")
             category    = st.selectbox(
                              UI["form_category"][lang],
-                             options=CATEGORIES
+                             options=CATEGORIES,
                              format_func=lambda c: CATEGORY_LABELS.get(c, {"DE": c, "EN": c})[lang]
                          )
             recipe      = st.text_area(UI["form_recipe"][lang], key="add_recipe")
