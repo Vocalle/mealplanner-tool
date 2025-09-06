@@ -57,7 +57,6 @@ UI = {
     "reroll":        {"DE": "🔄 Neu würfeln", "EN": "🔄 Reroll"},
     "reroll_help":   {"DE": "Neu würfeln", "EN": "Reroll this day"},
     "details":       {"DE": "ℹ️ Details", "EN": "ℹ️ Details"},
-    "delete":        {"DE": "🗑️ Löschen", "EN": "🗑️ Delete"},
     "reroll_week":   {"DE": "Woche komplett neu würfeln", "EN": "Reroll entire week"},
     "manage_title":  {"DE": "🍽️ Mahlzeiten verwalten", "EN": "🍽️ Manage Meals"},
     "manage_desc":   {"DE": "Lege neue Gerichte an, bearbeite oder lösche bestehende.",
@@ -140,7 +139,7 @@ def delete_ingredient(ing_id):
         conn.execute("DELETE FROM ingredient WHERE id=?", (ing_id,))
         conn.commit()
 
-# Session State
+# Session State initialisieren
 for key, default in [
     ("view", "plan"), ("plan", None),
     ("detail", None), ("lang", "DE")
@@ -164,25 +163,25 @@ if st.session_state.plan is None:
         for tag in DAYS_DE
     }
 
-# CSS-Upgrade
+# Dünneres CSS-Upgrade
 st.markdown("""
     <style>
     .meal-card {
       color: #fff;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      border-radius: 8px;
-      position: relative;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      padding: 0.25rem 0.5rem;
+      margin-bottom: 0.25rem;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      font-size: 0.85rem;
     }
     .stButton > button {
+      padding: 0.2rem 0.4rem;
+      margin: 0.1rem;
+      font-size: 0.7rem;
       border-radius: 6px;
-      padding: 0.5rem 1rem;
-      margin: 0.25rem;
       background-color: #444;
       color: #fff;
       border: none;
-      font-weight: 500;
     }
     .stButton > button:hover {
       background-color: #555;
@@ -216,17 +215,17 @@ def show_meal_detail(meal_id):
     st.session_state.detail = meal_id
     st.rerun()
 
-# Seiten-Logik
+# Wochenplan
 if st.session_state.view == "plan":
     st.title(UI["plan_title"][lang])
     st.markdown(UI["plan_header"][lang])
     cols = st.columns(7)
     for i, tag in enumerate(DAYS_DE):
-        label = tag if lang=="DE" else tag  # Wochentag bleibt Deutsch
+        label = tag if lang == "DE" else tag  # Wochentag bleibt Deutsch
         meal_id = st.session_state.plan.get(tag)
         meal, _ = get_meal(meal_id)
         with cols[i]:
-            st.markdown(f"**{label}**")
+            st.markdown(f"**{label}**", unsafe_allow_html=True)
             if meal:
                 color = CATEGORY_COLORS.get(meal["category"], "#333")
                 st.markdown(
@@ -234,10 +233,7 @@ if st.session_state.view == "plan":
                     unsafe_allow_html=True
                 )
                 st.write(meal["name"])
-                if st.button(
-                    UI["details"][lang],
-                    key=f"detail_{tag}"
-                ):
+                if st.button(UI["details"][lang], key=f"detail_{tag}"):
                     show_meal_detail(meal_id)
                 if st.button(
                     UI["reroll"][lang],
@@ -245,13 +241,6 @@ if st.session_state.view == "plan":
                     help=UI["reroll_help"][lang]
                 ):
                     reroll_day(tag)
-                if st.button(
-                    UI["delete"][lang],
-                    key=f"del_plan_{tag}"
-                ):
-                    delete_meal(meal_id)
-                    st.session_state.plan[tag] = None
-                    st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
             else:
                 st.markdown(
@@ -270,6 +259,7 @@ if st.session_state.view == "plan":
     st.divider()
     st.markdown(UI["tip"][lang])
 
+# Mahlzeiten verwalten
 elif st.session_state.view == "manage":
     st.title(UI["manage_title"][lang])
     st.markdown(UI["manage_desc"][lang])
@@ -327,14 +317,11 @@ if st.session_state.detail:
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown(f"#### { 'Zutaten' if lang=='DE' else 'Ingredients' }")
+        st.markdown(f"#### {'Zutaten' if lang=='DE' else 'Ingredients'}")
         for ing in ings:
             col1, col2 = st.columns([4,1])
             col1.write(ing["name"])
-            if col2.button(
-                UI["delete"][lang],
-                key=f"del_ing_{ing['id']}"
-            ):
+            if col2.button(UI["delete"][lang], key=f"del_ing_{ing['id']}"):
                 delete_ingredient(ing["id"])
                 st.rerun()
 
@@ -350,7 +337,7 @@ if st.session_state.detail:
                 add_ingredient(meal['id'], new_ing.strip())
                 st.rerun()
 
-        st.markdown(f"#### { 'Rezept' if lang=='DE' else 'Recipe' }")
+        st.markdown(f"#### {'Rezept' if lang=='DE' else 'Recipe'}")
         recipe = st.text_area(
             ("Rezept bearbeiten" if lang=="DE" else "Edit recipe"),
             meal["recipe"] or "",
@@ -361,25 +348,16 @@ if st.session_state.detail:
             key=f"save_recipe_{meal['id']}"
         ):
             update_recipe(meal['id'], recipe)
-            st.success(
-                "✔️ " + ("Rezept gespeichert!" if lang=="DE" else "Recipe saved!")
-            )
+            st.success("✔️ " + ("Rezept gespeichert!" if lang=="DE" else "Recipe saved!"))
 
-        # Löschen + Zurück nebeneinander
         c1, c2 = st.columns(2)
         with c1:
-            if st.button(
-                UI["delete"][lang],
-                key=f"del_meal_{meal['id']}"
-            ):
+            if st.button(UI["delete"][lang], key=f"del_meal_{meal['id']}"):
                 delete_meal(meal['id'])
                 st.session_state.detail = None
                 st.rerun()
         with c2:
-            if st.button(
-                UI["back"][lang],
-                key=f"back_{meal['id']}"
-            ):
+            if st.button(UI["back"][lang], key=f"back_{meal['id']}"):
                 st.session_state.detail = None
                 st.rerun()
 
